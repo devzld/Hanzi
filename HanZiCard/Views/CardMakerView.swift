@@ -21,7 +21,11 @@ struct CardMakerView: View {
 
     /// 当前所有字（过滤空白）
     private var chars: [String] {
-        input.map { String($0) }.filter { !$0.isWhitespace && !$0.isNewline }
+        var result: [String] = []
+        for ch in input where !ch.isWhitespace && !ch.isNewline {
+            result.append(String(ch))
+        }
+        return result
     }
 
     private var currentChar: String? {
