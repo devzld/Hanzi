@@ -1,0 +1,82 @@
+name: Build iOS
+
+# 在 GitHub 的 macOS 云机器上编译 SwiftUI 工程（Windows 本地无需 Xcode）
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  pull_request:
+
+concurrency:
+  group: ios-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 40
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 显示 Xcode 版本
+        run: xcodebuild -version
+
+      - name: 安装 XcodeGen
+        run: brew install xcodegen
+
+      - name: 生成 Xcode 工程
+        run: xcodegen generate
+
+      - name: 编译（模拟器 Release）
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project HanZiCard.xcodeproj \
+            -scheme HanZiCard \
+            -sdk iphonesimulator \
+            -configuration Release \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: 打包模拟器 .app
+        run: |
+          mkdir -p out
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/Build/Products/Release-iphonesimulator/HanZiCard.app \
+            out/HanZiCard-simulator.zip
+
+      - name: 归档（真机版，未签名）
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project HanZiCard.xcodeproj \
+            -scheme HanZiCard \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/HanZiCard.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            archive
+
+      - name: 生成未签名 IPA
+        run: |
+          mkdir -p out/Payload
+          cp -R build/HanZiCard.xcarchive/Products/Applications/HanZiCard.app out/Payload/
+          cd out && zip -qry HanZiCard-unsigned.ipa Payload && rm -rf Payload
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: HanZiCard-build
+          path: out/*
+
+      # 需要可安装到真机的 IPA 时：在仓库 Secrets 配置证书与描述文件后开启以下步骤
+      # - name: 导出已签名 IPA
+      #   run: |
+      #     xcodebuild -exportArchive \
+      #       -archivePath build/HanZiCard.xcarchive \
+      #       -exportPath out/ipa \
+      #       -exportOptionsPlist ExportOptions.plist
