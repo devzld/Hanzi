@@ -4,12 +4,15 @@
 
 ## 用 CI 编译（推荐，无需 Mac）
 
-推送到 `main` 分支会自动在 macOS 云机器上编译，产物在 Actions → 最新一次运行 → Artifacts：
+推送到 `main` 分支会自动在 macOS 云机器（`macos-15`）上编译，产物在 Actions → 最新一次运行 → Artifacts：
 
 - `HanZiCard-simulator.zip` —— 模拟器版 `.app`
 - `HanZiCard-unsigned.ipa` —— 真机版（**未签名**，需自行用证书重签后才能安装）
 
 也可以在 Actions 页面手动 `Run workflow`。
+
+> 注：`macos-14` 已于 2026-11-02 被 GitHub 退役，工作流使用 `macos-15`。
+> 编译失败时，CI 会把 `xcodebuild` 的错误摘要提交到 `ci-logs/build-errors.md`，方便没有 Xcode 的环境排查。
 
 ## 本地 Mac 上运行
 
