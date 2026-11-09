@@ -313,11 +313,3 @@ struct FeatureMessage: Identifiable {
     let id = UUID()
     let text: String
 }
-
-#Preview {
-    NavigationStack {
-        CardMakerView(initialCharacters: ["一", "二", "三", "人", "个"])
-    }
-    .environmentObject(AppStore())
-    .environmentObject(SpeechService())
-}

@@ -87,9 +87,3 @@ struct HomeView: View {
         .buttonStyle(.plain)
     }
 }
-
-#Preview {
-    HomeView()
-        .environmentObject(AppStore())
-        .environmentObject(SpeechService())
-}

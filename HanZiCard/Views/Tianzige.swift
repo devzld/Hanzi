@@ -52,9 +52,3 @@ struct DashedLine: Shape {
         return p
     }
 }
-
-#Preview {
-    Tianzige(char: "人", fontSize: 120)
-        .padding(40)
-        .background(Theme.background)
-}

@@ -13,14 +13,20 @@ concurrency:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-13
     timeout-minutes: 40
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: 显示 Xcode 版本
-        run: xcodebuild -version
+      - name: 选择最新可用 Xcode
+        run: |
+          echo "== 可用 Xcode =="
+          ls /Applications | grep '^Xcode' || true
+          latest=$(ls -d /Applications/Xcode*.app | sort -r | head -1)
+          echo "== 使用: $latest =="
+          sudo xcode-select -s "$latest/Contents/Developer"
+          xcodebuild -version
 
       - name: 安装 XcodeGen
         run: brew install xcodegen

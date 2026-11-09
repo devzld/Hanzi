@@ -104,11 +104,3 @@ struct LessonRow: View {
         }
     }
 }
-
-#Preview {
-    LessonRow(lesson: Lesson(id: 1, characters: ["一", "二", "三", "人", "个"]))
-        .environmentObject(AppStore())
-        .environmentObject(SpeechService())
-        .padding()
-        .background(Theme.background)
-}

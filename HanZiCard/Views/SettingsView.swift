@@ -70,8 +70,3 @@ struct LabeledRow: View {
         }
     }
 }
-
-#Preview {
-    SettingsView()
-        .environmentObject(AppStore())
-}

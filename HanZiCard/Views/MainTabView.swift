@@ -18,9 +18,3 @@ struct MainTabView: View {
         }
     }
 }
-
-#Preview {
-    MainTabView()
-        .environmentObject(AppStore())
-        .environmentObject(SpeechService())
-}
