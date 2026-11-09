@@ -1,0 +1,13 @@
+name: Runner Probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hello
+        run: uname -a
