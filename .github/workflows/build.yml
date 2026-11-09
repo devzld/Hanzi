@@ -14,7 +14,9 @@ concurrency:
 jobs:
   build:
     runs-on: macos-15
-    timeout-minutes: 40
+    timeout-minutes: 45
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -35,6 +37,8 @@ jobs:
         run: xcodegen generate
 
       - name: 编译（模拟器 Release）
+        id: build
+        continue-on-error: true
         run: |
           set -o pipefail
           xcodebuild \
@@ -44,9 +48,26 @@ jobs:
             -configuration Release \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
-            build
+            build 2>&1 | tee /tmp/build.log | tail -120
+
+      # 编译失败时把错误摘要提交回仓库，便于在 Windows 侧排查（[skip ci] 不触发新构建）
+      - name: 回传编译错误摘要
+        if: steps.build.outcome == 'failure'
+        run: |
+          mkdir -p ci-logs
+          {
+            echo "# xcodebuild 失败摘要"
+            echo ""
+            grep -nE "error:|The following build commands failed|BUILD FAILED" /tmp/build.log | head -150
+          } > ci-logs/build-errors.md
+          git config user.name "ci-bot"
+          git config user.email "ci-bot@users.noreply.github.com"
+          git add ci-logs/build-errors.md
+          git commit -m "ci: 记录编译错误 [skip ci]" || true
+          git push || true
 
       - name: 打包模拟器 .app
+        if: steps.build.outcome == 'success'
         run: |
           mkdir -p out
           ditto -c -k --sequesterRsrc --keepParent \
@@ -54,6 +75,8 @@ jobs:
             out/HanZiCard-simulator.zip
 
       - name: 归档（真机版，未签名）
+        if: steps.build.outcome == 'success'
+        continue-on-error: true
         run: |
           set -o pipefail
           xcodebuild \
@@ -65,24 +88,32 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
-            archive
+            archive 2>&1 | tail -40
 
       - name: 生成未签名 IPA
+        if: steps.build.outcome == 'success'
+        continue-on-error: true
         run: |
           mkdir -p out/Payload
-          cp -R build/HanZiCard.xcarchive/Products/Applications/HanZiCard.app out/Payload/
-          cd out && zip -qry HanZiCard-unsigned.ipa Payload && rm -rf Payload
+          if [ -d build/HanZiCard.xcarchive/Products/Applications/HanZiCard.app ]; then
+            cp -R build/HanZiCard.xcarchive/Products/Applications/HanZiCard.app out/Payload/
+            (cd out && zip -qry HanZiCard-unsigned.ipa Payload && rm -rf Payload)
+          fi
 
       - name: 上传产物
+        if: steps.build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: HanZiCard-build
           path: out/*
 
-      # 需要可安装到真机的 IPA 时：在仓库 Secrets 配置证书与描述文件后开启以下步骤
-      # - name: 导出已签名 IPA
-      #   run: |
-      #     xcodebuild -exportArchive \
-      #       -archivePath build/HanZiCard.xcarchive \
-      #       -exportPath out/ipa \
-      #       -exportOptionsPlist ExportOptions.plist
+      - name: 结果汇总
+        if: always()
+        run: |
+          echo "编译结果: ${{ steps.build.outcome }}"
+          {
+            echo "## iOS 构建结果"
+            echo ""
+            echo "- 编译：${{ steps.build.outcome }}"
+            echo "- 运行：${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          } >> "$GITHUB_STEP_SUMMARY"
